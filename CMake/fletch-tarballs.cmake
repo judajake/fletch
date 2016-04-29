@@ -244,6 +244,11 @@ if(NOT WIN32)
   list(APPEND fletch_external_sources Caffe)
 endif()
 
+set(VXL_version 46f524319352b29e43571b156155bdb73e8ab0d9)
+set(VXL_url https://github.com/vxl/vxl/archive/${VXL_version}.zip)
+set(VXL_md5 575e8befc7c2d35f46017ddc2ba408db)
+list(APPEND fletch_external_sources VXL)
+
 
 #+
 # Iterate through our sources, create local filenames and set up the "ENABLE"
