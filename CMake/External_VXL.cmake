@@ -36,7 +36,7 @@ if(UNIX)
   if(APPLE)
     set(VXL_EXTRA_CMAKE_CXX_FLAGS "--std=c++11 -stdlib=libc++ -D__STDC_CONSTANT_MACROS ")
   else()
-    set(VXL_EXTRA_CMAKE_CXX_FLAGS -D__STDC_CONSTANT_MACROS)
+    set(VXL_EXTRA_CMAKE_CXX_FLAGS "--std=c++11 -D__STDC_CONSTANT_MACROS")
   endif()
 elseif(WIN32)
   set(VXL_ARGS_V3P
