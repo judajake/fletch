@@ -47,8 +47,6 @@ endfunction()
 
 # Check for dependencies.
 if(NOT WIN32) # Win32 build takes care of most dependencies automatically
-  addCaffeDendency(GFlags "")
-  addCaffeDendency(GLog "")
   addCaffeDendency(LevelDB "")
   addCaffeDendency(LMDB "")
   if(NOT APPLE)
@@ -58,6 +56,8 @@ if(NOT WIN32) # Win32 build takes care of most dependencies automatically
 endif()
 addCaffeDendency(HDF5 "") # Caffe for windows grabs its own HDF5, but we need a parallel builds so we don't break other code
 addCaffeDendency(Boost 1.46)
+addCaffeDendency(GFlags "")
+addCaffeDendency(GLog "")
 addCaffeDendency(OpenCV "")
 addCaffeDendency(ZLib "")
 
@@ -146,7 +146,7 @@ if(fletch_ENABLE_GLog)
 else()
   set( CAFFE_GLog_ARGS
     -DGLOG_INCLUDE_DIR:PATH=${GLog_INCLUDE_DIR}
-    -DGLOG_LIBRARY:PATH=${GLog_INCLUDE_DIR}
+    -DGLOG_LIBRARY:FILEPATH=${GLog_LIBRARY}
     )
 endif()
 
@@ -215,7 +215,17 @@ if(fletch_BUILD_WITH_PYTHON AND fletch_ENABLE_Boost)
   if(Boost_Do_BCP_Name_Mangling)
     message(FATAL_ERROR "Cannot have Boost mangling enabled and use pycaffe.")
   endif()
-  set(PYTHON_ARGS -DBUILD_python:BOOL=ON -DBUILD_python_layer:BOOL=ON)
+  find_package(NumPy 1.7 REQUIRED)
+  set(PYTHON_ARGS
+      -DBUILD_python:BOOL=ON
+      -DBUILD_python_layer:BOOL=ON
+      -Dpython_version=${fletch_PYTHON_MAJOR_VERSION}
+      -DPYTHON_EXECUTABLE=${PYTHON_EXECUTABLE}
+      -DPYTHON_LIBRARY=${PYTHON_LIBRARY}
+      -DPYTHON_INCLUDE_DIR=${PYTHON_INCLUDE_DIR}
+      -DNUMPY_INCLUDE_DIR=${NUMPY_INCLUDE_DIR}
+      -DNUMPY_VERSION=${NUMPY_VERSION}
+      )
 else()
   set(PYTHON_ARGS -DBUILD_python:BOOL=OFF -DBUILD_python_layer:BOOL=OFF)
 endif()
@@ -255,6 +265,20 @@ else()
     )
 endif()
 
+
+set (Caffe_PATCH_DIR "${fletch_SOURCE_DIR}/Patches/Caffe/${Caffe_version}")
+if (EXISTS ${Caffe_PATCH_DIR})
+  set(
+    Caffe_PATCH_COMMAND ${CMAKE_COMMAND}
+    -DCaffe_patch=${Caffe_PATCH_DIR}
+    -DCaffe_source=${fletch_BUILD_PREFIX}/src/Caffe
+    -P ${Caffe_PATCH_DIR}/Patch.cmake
+    )
+else()
+  set(Caffe_PATCH_COMMAND "")
+endif()
+
+
 # Main build and install command
 if(WIN32)
 ExternalProject_Add(Caffe
@@ -265,10 +289,7 @@ ExternalProject_Add(Caffe
   DOWNLOAD_DIR ${fletch_DOWNLOAD_DIR}
   INSTALL_DIR ${fletch_BUILD_INSTALL_PREFIX}
 
-  PATCH_COMMAND ${CMAKE_COMMAND}
-    -DCaffe_patch=${fletch_SOURCE_DIR}/Patches/Caffe
-    -DCaffe_source=${fletch_BUILD_PREFIX}/src/Caffe
-    -P ${fletch_SOURCE_DIR}/Patches/Caffe/Patch.cmake
+  PATCH_COMMAND ${Caffe_PATCH_COMMAND}
 
   CMAKE_COMMAND
   CMAKE_GENERATOR ${gen}
@@ -293,10 +314,7 @@ ExternalProject_Add(Caffe
   DOWNLOAD_DIR ${fletch_DOWNLOAD_DIR}
   INSTALL_DIR ${fletch_BUILD_INSTALL_PREFIX}
 
-  PATCH_COMMAND ${CMAKE_COMMAND}
-    -DCaffe_patch=${fletch_SOURCE_DIR}/Patches/Caffe
-    -DCaffe_source=${fletch_BUILD_PREFIX}/src/Caffe
-    -P ${fletch_SOURCE_DIR}/Patches/Caffe/Patch.cmake
+  PATCH_COMMAND ${Caffe_PATCH_COMMAND}
 
   CMAKE_COMMAND
   CMAKE_GENERATOR ${gen}

@@ -21,16 +21,35 @@
 #   External_foo.cmake files for examples)
 #-
 
-
-
 # Boost
-set(Boost_major_version 1)
-set(Boost_minor_version 55)
-set(Boost_patch_version 0)
-set(Boost_version ${Boost_major_version}.${Boost_minor_version}.${Boost_patch_version})
-set(Boost_url "http://sourceforge.net/projects/boost/files/boost/${Boost_version}/boost_${Boost_major_version}_${Boost_minor_version}_${Boost_patch_version}.tar.bz2")
-set(Boost_md5 "d6eef4b4cacb2183f2bf265a5a03a354")
+# Support 1.55.0 (Default) and 1.65.1 optionally
+if (fletch_ENABLE_Boost OR fletch_ENABLE_ALL_PACKAGES)
+  set(Boost_SELECT_VERSION 1.55.0 CACHE STRING "Select the major version of Boost to build.")
+  set_property(CACHE Boost_SELECT_VERSION PROPERTY STRINGS "1.55.0" "1.65.1")
+  message(STATUS "Boost Select version: ${Boost_SELECT_VERSION}")
+
+  if (Boost_SELECT_VERSION VERSION_EQUAL 1.55.0)
+    # Boost 1.55
+    set(Boost_major_version 1)
+    set(Boost_minor_version 55)
+    set(Boost_patch_version 0)
+    set(Boost_url "http://sourceforge.net/projects/boost/files/boost/${Boost_SELECT_VERSION}/boost_${Boost_major_version}_${Boost_minor_version}_${Boost_patch_version}.tar.bz2")
+    set(Boost_md5 "d6eef4b4cacb2183f2bf265a5a03a354")
+  elseif(Boost_SELECT_VERSION VERSION_EQUAL 1.65.1)
+    # Boost 1.65.1
+    set(Boost_major_version 1)
+    set(Boost_minor_version 65)
+    set(Boost_patch_version 1)
+    set(Boost_url "http://sourceforge.net/projects/boost/files/boost/${Boost_SELECT_VERSION}/boost_${Boost_major_version}_${Boost_minor_version}_${Boost_patch_version}.tar.bz2")
+    set(Boost_md5 "41d7542ce40e171f3f7982aff008ff0d")
+  else()
+    message(STATUS "Boost_SELECT_VERSION: Not supported")
+  endif()
+endif()
 list(APPEND fletch_external_sources Boost)
+
+
+
 
 # ZLib
 set(ZLib_version 1.2.8)
@@ -75,8 +94,18 @@ set(yasm_md5 "fc9e586751ff789b34b1f21d572d96af")
 
 # FFmpeg
 set(_FFmpeg_supported TRUE)
-set(_FFmpeg_version 2.6.2)
 if(WIN32)
+
+  if (fletch_ENABLE_FFmpeg OR fletch_ENABLE_ALL_PACKAGES)
+    set(FFmpeg_SELECT_VERSION "win32" CACHE STRING "Select the version of FFmpeg to build.")
+    set_property(CACHE FFmpeg_SELECT_VERSION PROPERTY STRINGS "win32")
+    mark_as_advanced(FFmpeg_SELECT_VERSION)
+  endif()
+  # The windows version is git-c089e72 (2015-03-05)
+  # follows: n2.6-dev (2014-12-03)
+  # precedes: n2.6 (2015-03-06) - n2.7-dev (2015-03-06)
+  set(_FFmpeg_version ${FFmpeg_SELECT_VERSION})
+
   if (${CMAKE_MAJOR_VERSION}.${CMAKE_MINOR_VERSION} LESS 3.1 )
     message(FATAL_ERROR "CMake ${CMAKE_MAJOR_VERSION}.${CMAKE_MINOR_VERSION} is too old to support the 7z extension of FFmpeg")
   endif()
@@ -85,17 +114,40 @@ if(WIN32)
     set(bitness 32)
     message(FATAL_ERROR "Fletch does NOT support FMPEG 32 bit. Please use 64bit.")
   endif()
+  # On windows download prebuilt binaries and shared libraries
+  # dev contains headers .lib, .def, and mingw .dll.a files
+  # shared contains dll and exe files.
   set(FFmpeg_dev_md5 "748d5300316990c6a40a23bbfc3abff4")
   set(FFmpeg_shared_md5 "33dbda4fdcb5ec402520528da7369585")
-  set(FFmpeg_dev_url "https://data.kitware.com/api/v1/file/591a0e258d777f16d01e0cb8/download/ffmpeg_dev_win64.7z")
+  set(FFmpeg_dev_url    "https://data.kitware.com/api/v1/file/591a0e258d777f16d01e0cb8/download/ffmpeg_dev_win64.7z")
   set(FFmpeg_shared_url "https://data.kitware.com/api/v1/file/591a0e258d777f16d01e0cb5/download/ffmpeg_shared_win64.7z")
 else()
+
+  if (fletch_ENABLE_FFmpeg OR fletch_ENABLE_ALL_PACKAGES)
+    # allow different versions to be selected for testing purposes
+    set(FFmpeg_SELECT_VERSION 2.6.2 CACHE STRING "Select the version of FFmpeg to build.")
+    set_property(CACHE FFmpeg_SELECT_VERSION PROPERTY STRINGS "2.6.2" "3.3.3")
+    mark_as_advanced(FFmpeg_SELECT_VERSION)
+  endif()
+
+  #set(_FFmpeg_version 3.3.3) # (2017-07-29)
+  #set(_FFmpeg_version 2.6.2) # (2015-04-10)
+  set(_FFmpeg_version ${FFmpeg_SELECT_VERSION})
   set(FFmpeg_url "http://www.ffmpeg.org/releases/ffmpeg-${_FFmpeg_version}.tar.gz")
-  set(FFmpeg_md5 "412166ef045b2f84f23e4bf38575be20")
+
+  if (_FFmpeg_version VERSION_EQUAL 3.3.3)
+    set(FFmpeg_md5 "f32df06c16bdc32579b7fcecd56e03df")
+  elseif (_FFmpeg_version VERSION_EQUAL 2.6.2)
+    set(FFmpeg_md5 "412166ef045b2f84f23e4bf38575be20")
+  elseif (_FFmpeg_supported AND _FFmpeg_version)
+    message("Unsupported FFmpeg version ${_FFmpeg_version}")
+  endif()
+
 endif()
 if(_FFmpeg_supported)
   list(APPEND fletch_external_sources FFmpeg)
 endif()
+
 
 # EIGEN
 set(Eigen_version 3.2.9)
@@ -105,40 +157,42 @@ set(Eigen_dlname "eigen-${Eigen_version}.tar.gz")
 list(APPEND fletch_external_sources Eigen)
 
 # OpenCV
-# Support 2.4.11 and 3.1 optionally
-if (fletch_ENABLE_OpenCV OR fletch_ENABLE_ALL_PACKAGES)
+# Support 2.4.13 and 3.1, and 3.3 optionally
+if (fletch_ENABLE_OpenCV OR fletch_ENABLE_ALL_PACKAGES OR AUTO_ENABLE_CAFFE_DEPENDENCY)
   set(OpenCV_SELECT_VERSION 3.1.0 CACHE STRING "Select the  version of OpenCV to build.")
-  set_property(CACHE OpenCV_SELECT_VERSION PROPERTY STRINGS 2.4.11 3.1.0)
+  set_property(CACHE OpenCV_SELECT_VERSION PROPERTY STRINGS "2.4.13" "3.1.0" "3.3.0")
+
+  set(OpenCV_version ${OpenCV_SELECT_VERSION})
+  set(OpenCV_url "http://github.com/Itseez/opencv/archive/${OpenCV_version}.zip")
+  set(OpenCV_dlname "opencv-${OpenCV_version}.zip")
 
   # Expose optional contrib repo when enabling OpenCV version >= 3.x
-  if (OpenCV_SELECT_VERSION VERSION_EQUAL 3.0.0 OR OpenCV_SELECT_VERSION VERSION_GREATER 3.0.0)
+  if (NOT OpenCV_SELECT_VERSION VERSION_LESS 3.0.0 )
     list(APPEND fletch_external_sources OpenCV_contrib)
+    set(OpenCV_contrib_version "${OpenCV_version}")
+    set(OpenCV_contrib_url "http://github.com/Itseez/opencv_contrib/archive/${OpenCV_contrib_version}.zip")
+    set(OpenCV_contrib_dlname "opencv-contrib-${OpenCV_version}.zip")
+  else()
+    # Remove Contrib repo option when OpenCV is not the correct version
+    unset(fletch_ENABLE_OpenCV_contrib CACHE)
   endif()
-endif()
 
-# Remove Contrib repo option when OpenCV not enable or incorrect version
-if ( NOT fletch_ENABLE_OpenCV OR OpenCV_SELECT_VERSION VERSION_LESS 3.0.0 )
+  # Paired contrib repo information
+  if (OpenCV_version VERSION_EQUAL 3.3.0)
+    set(OpenCV_md5 "cc586ebe960a7cdd87100e89088abc06")
+    set(OpenCV_contrib_md5 "2dd6dc53d49a09dd8538e63a55edc87a")
+  elseif (OpenCV_version VERSION_EQUAL 3.1.0)
+    set(OpenCV_md5 "6082ee2124d4066581a7386972bfd52a")
+    set(OpenCV_contrib_md5 "0d0bfeabe539542791b465ec1c7c90e6")
+  elseif (OpenCV_version VERSION_EQUAL 2.4.13)
+    set(OpenCV_md5 "886b0c511209b2f3129649928135967c")
+  else()
+    message(ERROR "OpenCV Version \"${OpenCV_version}\" Not Supported")
+  endif()
+else()
+  # Remove Contrib repo option when OpenCV is not enabled
   unset(fletch_ENABLE_OpenCV_contrib CACHE)
 endif()
-
-if (OpenCV_SELECT_VERSION VERSION_EQUAL 3.1.0)
-  set(OpenCV_version "3.1.0")
-  set(OpenCV_url "http://github.com/Itseez/opencv/archive/${OpenCV_version}.zip")
-  set(OpenCV_md5 "6082ee2124d4066581a7386972bfd52a")
-  # Paired contrib repo information
-  set(OpenCV_contrib_version "${OpenCV_version}")
-  set(OpenCV_contrib_url "http://github.com/Itseez/opencv_contrib/archive/${OpenCV_contrib_version}.zip")
-  set(OpenCV_contrib_md5 "0d0bfeabe539542791b465ec1c7c90e6")
-  set(OpenCV_contrib_dlname "opencv-contrib-${OpenCV_version}.zip")
-elseif (OpenCV_SELECT_VERSION VERSION_EQUAL 2.4.11)
-  set(OpenCV_version "2.4.13")
-  set(OpenCV_url "http://github.com/Itseez/opencv/archive/${OpenCV_version}.zip")
-  set(OpenCV_md5 "886b0c511209b2f3129649928135967c")
-else()
-  message(STATUS "OpenCV Version Not Supported")
-endif()
-
-set(OpenCV_dlname "opencv-${OpenCV_version}.zip")
 list(APPEND fletch_external_sources OpenCV)
 
 # log4cplus
@@ -148,25 +202,40 @@ set(log4cplus_md5 "4c0973becab54c8492204258260dcf06")
 set(log4cplus_dlname "log4cplus-${log4cplus_version}.zip")
 list(APPEND fletch_external_sources log4cplus)
 
-# GLog
-if(NOT WIN32)
-  set(GLog_version "0.3.3")
-  set(GLog_url "https://github.com/google/glog/archive/v${GLog_version}.tar.gz")
-  set(GLog_md5 "c1f86af27bd9c73186730aa957607ed0")
-  list(APPEND fletch_external_sources GLog)
-endif()
-
 # GFlags
-set(GFlags_version "2.1.2")
+set(GFlags_version "2.2.1")
 set(GFlags_url "https://github.com/gflags/gflags/archive/v${GFlags_version}.tar.gz")
-set(GFlags_md5 "ac432de923f9de1e9780b5254884599f")
+set(GFlags_md5 "b98e772b4490c84fc5a87681973f75d1")
+set(GFlags_dlname "gflags-${GFlags_version}.tar.gz")
 list(APPEND fletch_external_sources GFlags)
+
+# GLog
+set(GLog_version "0.3.5")
+set(GLog_url "https://github.com/google/glog/archive/v${GLog_version}.tar.gz")
+set(GLog_md5 "5df6d78b81e51b90ac0ecd7ed932b0d4")
+set(GLog_dlname "glog-${GLog_version}.tar.gz")
+list(APPEND fletch_external_sources GLog)
+
+set(GTest_version "1.8.0")
+set(GTest_url "https://github.com/google/googletest/archive/release-${GTest_version}.tar.gz")
+set(GTest_md5 "16877098823401d1bf2ed7891d7dce36")
+set(GTest_dlname "gtest-${GTest_version}.tar.gz")
+list(APPEND fletch_external_sources GTest)
 
 #OpenBLAS
 if(NOT WIN32)
-  set(OpenBLAS_version "0.2.15")
+  #set(OpenBLAS_version "0.2.15")
+  set(OpenBLAS_version "0.2.20")
   set(OpenBLAS_url "https://github.com/xianyi/OpenBLAS/archive/v${OpenBLAS_version}.tar.gz")
-  set(OpenBLAS_md5 "b1190f3d3471685f17cfd1ec1d252ac9")
+
+  if (OpenBLAS_version VERSION_EQUAL 0.2.20)
+    set(OpenBLAS_md5 "48637eb29f5b492b91459175dcc574b1")
+  elseif (OpenBLAS_version VERSION_EQUAL 0.2.15)
+    set(OpenBLAS_md5 "b1190f3d3471685f17cfd1ec1d252ac9")
+  else()
+    message("Unknown OpenBLAS version = ${OpenBLAS_version}")
+  endif()
+  set(OpenBLAS_dlname "openblas-${OpenBLAS_version}.zip")
   list(APPEND fletch_external_sources OpenBLAS)
 endif()
 
@@ -177,9 +246,9 @@ set(SuiteSparse_md5 "a2926c27f8a5285e4a10265cc68bbc18")
 list(APPEND fletch_external_sources SuiteSparse)
 
 # Ceres Solver
-set(Ceres_version 1.10.0)
+set(Ceres_version 1.13.0)
 set(Ceres_url "http://ceres-solver.org/ceres-solver-${Ceres_version}.tar.gz")
-set(Ceres_md5 "dbf9f452bd46e052925b835efea9ab16")
+set(Ceres_md5 "cd568707571c92af3d69c1eb28d63d72")
 set(Ceres_dlname "ceres-${Ceres_version}.tar.gz")
 list(APPEND fletch_external_sources Ceres)
 
@@ -227,6 +296,7 @@ set(libkml_version "20150911git79b3eb0")
 set(libkml_tag "79b3eb066eacd8fb117b10dc990b53b4cd11f33d")
 set(libkml_url "https://github.com/kitware/libkml/archive/${libkml_tag}.zip")
 set(libkml_md5 "a232dfd4eb07489768b207d88b983267")
+set(libkml_dlname "libkml-${libkml_version}.zip")
 list(APPEND fletch_external_sources libkml)
 
 # Qt
@@ -245,21 +315,77 @@ set(PROJ4_url "http://download.osgeo.org/proj/proj-${PROJ4_version}.tar.gz" )
 set(PROJ4_md5 "d598336ca834742735137c5674b214a1" )
 list(APPEND fletch_external_sources PROJ4 )
 
+# libgeotiff
+set(libgeotiff_version "1.4.1")
+set(libgeotiff_url "http://download.osgeo.org/geotiff/libgeotiff/libgeotiff-${libgeotiff_version}.zip")
+set(libgeotiff_md5 "5ce69bd89fdc3be245bd118cf0bc71f1")
+list(APPEND fletch_external_sources libgeotiff)
+
+# GDAL
+set(GDAL_version "1.11.4")
+set(GDAL_url "http://download.osgeo.org/gdal/${GDAL_version}/gdal-${GDAL_version}.tar.gz")
+set(GDAL_md5 "e9a966f0f5a88c43da47faf78a865952")
+list(APPEND fletch_external_sources GDAL)
+
 # GeographicLib
 set(GeographicLib_version "1.30" )
 set(GeographicLib_url "http://downloads.sourceforge.net/geographiclib/distrib/GeographicLib-${GeographicLib_version}.tar.gz" )
 set(GeographicLib_md5 "eadf39013bfef1f87387e7964a2adf02" )
 list(APPEND fletch_external_sources GeographicLib )
 
+# GEOS
+set(GEOS_version "3.4.2" )
+set(GEOS_url "http://download.osgeo.org/geos/geos-${GEOS_version}.tar.bz2" )
+set(GEOS_md5 "fc5df2d926eb7e67f988a43a92683bae" )
+list(APPEND fletch_external_sources GEOS )
+
+# PostgreSQL
+if (fletch_ENABLE_PostgreSQL OR fletch_ENABLE_ALL_PACKAGES)
+  set(PostgreSQL_SELECT_VERSION 9.5.1 CACHE STRING "Select the major version of PostgreSQL to build.")
+  set_property(CACHE PostgreSQL_SELECT_VERSION PROPERTY STRINGS "9.5.1" "9.4.6")
+  message(STATUS "PostgreSQL Select version: ${PostgreSQL_SELECT_VERSION}")
+
+  if (PostgreSQL_SELECT_VERSION VERSION_EQUAL 9.5.1)
+    # PostgreSQL 9.5
+    set(PostgreSQL_version ${PostgreSQL_SELECT_VERSION})
+    set(PostgreSQL_url "http://ftp.PostgreSQL.org/pub/source/v${PostgreSQL_version}/postgresql-${PostgreSQL_version}.tar.bz2")
+    set(PostgreSQL_md5 "11e037afaa4bd0c90bb3c3d955e2b401")
+  elseif(PostgreSQL_SELECT_VERSION VERSION_EQUAL 9.4.6)
+    # PostgreSQL 9.4
+    set(PostgreSQL_version ${PostgreSQL_SELECT_VERSION})
+    set(PostgreSQL_url "http://ftp.PostgreSQL.org/pub/source/v${PostgreSQL_version}/postgresql-${PostgreSQL_version}.tar.bz2")
+    set(PostgreSQL_md5 "0371b9d4fb995062c040ea5c3c1c971e")
+  else()
+    message(STATUS "PostgreSQL_SELECT_VERSION: Not supported")
+  endif()
+endif()
+list(APPEND fletch_external_sources PostgreSQL)
+
 # VTK
-set(VTK_version 6.2)
-set(VTK_url "http://www.vtk.org/files/release/${VTK_version}/VTK-${VTK_version}.0.zip")
-set(VTK_md5 "2363432e25e6a2377e1c241cd2954f00")
+if (fletch_ENABLE_VTK OR fletch_ENABLE_ALL_PACKAGES)
+  # Support the stable version 6.2, and work on updating to next version 8.0
+  set(VTK_SELECT_VERSION 6.2 CACHE STRING "Select the version of VTK to build.")
+  set_property(CACHE VTK_SELECT_VERSION PROPERTY STRINGS 6.2 8.0)
+endif()
+
+if (VTK_SELECT_VERSION VERSION_EQUAL 8.0)
+  set(VTK_version 8.0)
+  set(VTK_url "http://www.vtk.org/files/release/8.0/VTK-8.0.0.zip")
+  set(VTK_md5 "0bec6b6aa3c92cc9e058a12e80257990")  # v8.0
+elseif (VTK_SELECT_VERSION VERSION_EQUAL 6.2)
+  set(VTK_version 6.2)
+  set(VTK_url "http://www.vtk.org/files/release/6.2/VTK-6.2.0.zip")
+  set(VTK_md5 "2363432e25e6a2377e1c241cd2954f00")  # v6.2
+elseif (fletch_ENABLE_VTK OR fletch_ENABLE_ALL_PACKAGES)
+  message(ERROR "VTK Version ${VTK_SELECT_VERSION} Not Supported")
+endif()
 list(APPEND fletch_external_sources VTK)
 
 # VXL
-set(VXL_url "https://github.com/vxl/vxl/archive/cbca86fe5d12b7b0379d72a3aa6bf5cfeebd0302.zip")
+set(VXL_version "cbca86fe5d12b7b0379d72a3aa6bf5cfeebd0302")
+set(VXL_url "https://github.com/vxl/vxl/archive/${VXL_version}.zip")
 set(VXL_md5 "044cc927012aef07b38492f9df1fd772")
+set(VXL_dlname "vxl-${VXL_version}.zip")
 list(APPEND fletch_external_sources VXL)
 
 # ITK
@@ -299,29 +425,89 @@ if(NOT WIN32)
   set(LevelDB_version "1.18")
   set(LevelDB_url "https://github.com/google/leveldb/archive/v${LevelDB_version}.tar.gz")
   set(LevelDB_md5 "73770de34a2a5ab34498d2e05b2b7fa0")
+  set(LevelDB_dlname "leveldb-${LevelDB_version}.tar.gz")
   list(APPEND fletch_external_sources LevelDB)
 endif()
 
 # Protobuf
 if(NOT WIN32)
-  set(Protobuf_version "2.5.0" )
-  set(Protobuf_url "https://github.com/google/protobuf/releases/download/v${Protobuf_version}/protobuf-${Protobuf_version}.tar.bz2" )
-  set(Protobuf_md5 "a72001a9067a4c2c4e0e836d0f92ece4" )
+  if (fletch_ENABLE_Protobuf OR fletch_ENABLE_ALL_PACKAGES OR AUTO_ENABLE_CAFFE_DEPENDENCY)
+    set(Protobuf_SELECT_VERSION "2.5.0" CACHE STRING "Select the  version of ProtoBuf to build.")
+    set_property(CACHE Protobuf_SELECT_VERSION PROPERTY STRINGS "2.5.0" "3.4.1")
+  endif()
+
+  set(Protobuf_version ${Protobuf_SELECT_VERSION})
+
+  if (Protobuf_version VERSION_EQUAL 2.5.0)
+    set(Protobuf_url "https://github.com/google/protobuf/releases/download/v${Protobuf_version}/protobuf-${Protobuf_version}.tar.bz2" )
+    set(Protobuf_md5 "a72001a9067a4c2c4e0e836d0f92ece4" )
+  elseif (Protobuf_version VERSION_EQUAL 3.4.1)
+    set(Protobuf_url "https://github.com/google/protobuf/releases/download/v${Protobuf_version}/protobuf-cpp-${Protobuf_version}.tar.gz" )
+    set(Protobuf_md5 "74446d310ce79cf20bab3ffd0e8f8f8f" )
+  elseif(Protobuf_version)
+    message(ERROR "Protobuf Version ${Protobuf_version} Not Supported")
+  endif()
   list(APPEND fletch_external_sources Protobuf )
 endif()
 
 # Caffe
-if(WIN32)
-  set(Caffe_version "527f97c0692f116ada7cb97eed8172ef7da05416")
-  set(Caffe_url "https://data.kitware.com/api/v1/item/598215638d777f16d01ea137/download/caffe-win32-527f97c0.zip")
-  set(Caffe_md5 "4ec71f28a797eac7fe3ddcb0fbfab60e")
-  list(APPEND fletch_external_sources Caffe)
+set(InternalCaffe True)
+
+if(InternalCaffe)
+  # Use the internal kitware hosted Caffe, which contain additional
+  # functionality that has not been merged into the BVLC version.
+  # This is the recommended option.
+  if(WIN32)
+    set(Caffe_version "527f97c0692f116ada7cb97eed8172ef7da05416")
+    set(Caffe_url "https://data.kitware.com/api/v1/file/598215638d777f16d01ea138/download/caffe-win32-527f97c0.zip")
+    set(Caffe_md5 "4ec71f28a797eac7fe3ddcb0fbfab60e")
+  else()
+    set(Caffe_version "7f5cea3b2986a7d2c913b716eb524c27b6b2ba7b")
+    set(Caffe_url "https://data.kitware.com/api/v1/file/598215a28d777f16d01ea13b/download/caffe-linux-7f5cea3.zip")
+    set(Caffe_md5 "da2e5c3920f721d70bc02e152f510215")
+  endif()
 else()
-  set(Caffe_version "7f5cea3b2986a7d2c913b716eb524c27b6b2ba7b")
-  set(Caffe_url "https://data.kitware.com/api/v1/file/598215a28d777f16d01ea13b/download/caffe-linux-7f5cea3.zip")
-  set(Caffe_md5 "da2e5c3920f721d70bc02e152f510215")
-  list(APPEND fletch_external_sources Caffe)
+  # The original BVLC Caffe does not currently contain required functionality.
+  set(Caffe_version "1.0")
+  set(Caffe_url "https://github.com/BVLC/caffe/archive/${Caffe_version}.tar.gz")
+  set(Caffe_md5 "5fbb0e32e7cd8de3de46e6fe6e4cd2b5")
 endif()
+list(APPEND fletch_external_sources Caffe)
+
+# Caffe-Segnet
+# This segnet code is based on caffe, and calls itself caffe, but much different than caffe
+if(WIN32)
+  #set(Caffe_Segnet_version "527f97c0692f116ada7cb97eed8172ef7da05416")
+  #set(Caffe_Segnet_url "https://data.kitware.com/api/v1/file/59cbedae8d777f7d33e9d9df/download/darknet-1e3a9ceb.zip")
+  #set(Caffe_Segnet_md5 "89fef1913972ec855c7b31a598c9c52f")
+else()
+  set(Caffe_Segnet_version "abcf30dca449245e101bf4ced519f716177f0885")
+  set(Caffe_Segnet_url "https://data.kitware.com/api/v1/file/59de95548d777f31ac641dbb/download/caffe-segnet-abcf30d.zip")
+  set(Caffe_Segnet_md5 "73780d2a1e9761711d4f7b806dd497ef")
+  
+  #Move this out when windows is supported
+  list(APPEND fletch_external_sources Caffe_Segnet)
+endif()
+
+# Darknet
+# The Darket package used is a fork maintained by kitware that uses CMake and supports building/running on windows
+set(Darknet_url "https://data.kitware.com/api/v1/file/59cbedae8d777f7d33e9d9df/download/darknet-1e3a9ceb.zip")
+set(Darknet_md5 "89fef1913972ec855c7b31a598c9c52f")
+list(APPEND fletch_external_sources Darknet)
+
+# PyBind11
+set(PyBind11_version "2.2.0")
+set(PyBind11_url "https://github.com/pybind/pybind11/archive/v${PyBind11_version}.tar.gz")
+set(PyBind11_md5 "978b26aea1c6bfc4f88518ef33771af2")
+set(PyBind11_dlname "pybind11-${PyBind11_version}.tar.gz")
+list(APPEND fletch_external_sources PyBind11)
+
+# YAMLcpp
+set(YAMLcpp_version "0.5.3")
+set(YAMLcpp_url "https://github.com/jbeder/yaml-cpp/archive/release-${YAMLcpp_version}.tar.gz")
+set(YAMLcpp_md5 "e2507c3645fc2bec29ba9a1838fb3951")
+set(YAMLcpp_dlname "yaml-cpp-release-${YAMLcpp_version}.tar.gz")
+list(APPEND fletch_external_sources YAMLcpp)
 
 #+
 # Iterate through our sources, create local filenames and set up the "ENABLE"

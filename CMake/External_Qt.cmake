@@ -1,10 +1,11 @@
 # The Qt external project for fletch
 
-option(BUILD_QT_WEBKIT "Should the Qt Webkit module be built?" FALSE)
-if(BUILD_QT_WEBKIT)
-  set(Qt_args_webkit "-webkit")
+option(BUILD_Qt_MINIMAL "Build a reduced set of Qt packages. Removes webkit, javascipt and script" TRUE)
+
+if(BUILD_Qt_MINIMAL)
+  set(Qt_args_package -no-webkit)
 else()
-  set(Qt_args_webkit "-no-webkit")
+  set(Qt_args_package -webkit)
 endif()
 
 if(CMAKE_BUILD_TYPE)
@@ -103,15 +104,20 @@ if(WIN32)
   #We have some trouble determining the correct platform for VS2013 and VS2017
   if(MSVC12)
     list(APPEND Qt_args_arch -platform win32-msvc2013)
-  elseif(MSVC AND MSVC_VERSION EQUAL 1910)
+  elseif(MSVC AND NOT MSVC_VERSION LESS 1910)
     list(APPEND Qt_args_arch -platform win32-msvc2017 -make nmake)
   endif()
 else()
-  option(BUILD_QT_JAVASCRIPTJIT "Should the Qt Javascript JIT module be built?" FALSE)
-  if(BUILD_QT_JAVASCRIPTJIT)
-    set(Qt_args_javascriptjit "-javascript-jit")
+  if(BUILD_Qt_MINIMAL)
+    list(APPEND Qt_args_package -no-javascript-jit -no-script -no-scripttools)
   else()
-    set(Qt_args_javascriptjit "-no-javascript-jit")
+    set(Qt_args_package -javascript-jit -script -scripttools)
+  endif()
+  # If we are using gcc >= 6.0 we need to turn off -no-script -no-scripttools
+  # until the build is fixed.
+  if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND NOT CMAKE_CXX_COMPILER_VERSION VERSION_LESS 6.0)
+    set(BUILD_Qt_MINIMAL TRUE CACHE BOOL "" FORCE)
+    message(STATUS "disabling script for GNU 6.0")
   endif()
 
   Fletch_Require_Make()
@@ -145,7 +151,7 @@ else()
   endif()
 endif()
 
-set(Qt_configure ${Qt_configure}
+list( APPEND Qt_configure
   -prefix ${fletch_BUILD_INSTALL_PREFIX}
   -docdir ${fletch_BUILD_INSTALL_PREFIX}/share/doc/qt4-${Qt_version}
   -datadir ${fletch_BUILD_INSTALL_PREFIX}/lib/qt4
@@ -154,8 +160,7 @@ set(Qt_configure ${Qt_configure}
   -opensource -confirm-license -fast
   -nomake examples -nomake demos -nomake translations -nomake linguist
   ${Qt_args_build_type}
-  ${Qt_args_webkit}
-  ${Qt_args_javascriptjit}
+  ${Qt_args_package}
   ${Qt_args_arch}
   ${Qt_args_jpeg}
   ${Qt_args_zlib}

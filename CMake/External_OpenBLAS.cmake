@@ -13,17 +13,27 @@ else()
     ${fletch_BUILD_PREFIX}/src/OpenBLAS
     )
 
+  # Add a patch if one exists for the requested version
+  set(OpenBLAS_patch ${fletch_SOURCE_DIR}/Patches/OpenBLAS/${OpenBLAS_version})
+  if (EXISTS ${OpenBLAS_patch})
+    set(OpenBLAS_PATCH_COMMAND ${CMAKE_COMMAND}
+      -DOpenBLAS_patch:PATH=${OpenBLAS_patch}
+      -DOpenBLAS_source:PATH=${fletch_BUILD_PREFIX}/src/OpenBLAS
+      -P ${OpenBLAS_patch}/Patch.cmake
+      )
+  elseif()
+    set(OpenBLAS_PATCH_COMMAND "")
+  endif()
+
   ExternalProject_Add(OpenBLAS
     URL ${OpenBLAS_url}
     URL_MD5 ${OpenBLAS_md5}
+    DOWNLOAD_NAME ${OpenBLAS_dlname}
     DEPENDS ${OpenBLAS_DEPENDS}
     PREFIX  ${fletch_BUILD_PREFIX}
     DOWNLOAD_DIR ${fletch_DOWNLOAD_DIR}
     INSTALL_DIR  ${fletch_BUILD_INSTALL_PREFIX}
-    PATCH_COMMAND ${CMAKE_COMMAND}
-      -DOpenBLAS_patch:PATH=${fletch_SOURCE_DIR}/Patches/OpenBLAS
-      -DOpenBLAS_source:PATH=${fletch_BUILD_PREFIX}/src/OpenBLAS
-      -P ${fletch_SOURCE_DIR}/Patches/OpenBLAS/Patch.cmake
+    PATCH_COMMAND ${OpenBLAS_PATCH_COMMAND}
     CONFIGURE_COMMAND ""
     BUILD_IN_SOURCE 1
     BUILD_COMMAND ${MAKE_EXECUTABLE}

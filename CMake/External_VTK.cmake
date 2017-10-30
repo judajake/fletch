@@ -171,7 +171,17 @@ if (fletch_BUILD_WITH_PYTHON AND NOT MSVC14 )
     message(WARNING "VTK building without python support. Python NOT found.")
   endif()
 elseif(fletch_BUILD_WITH_PYTHON AND MSVC14)
-  message(WARN " VTK Python will not build correctly on Visual Studio 2015. VTK 7.0 of higher is required.")
+  message(WARNING "VTK Python will not build correctly on Visual Studio 2015. VTK 7.0 of higher is required.")
+endif()
+
+if (fletch_ENABLE_VTK AND VTK_WRAP_PYTHON AND VTK_SELECT_VERSION VERSION_LESS 7.0.0)
+  if (NOT fletch_PYTHON_MAJOR_VERSION VERSION_LESS 3)
+    if (fletch_BUILD_WITH_PYTHON)
+      message(WARNING "Enabling Python 3 in VTK requires VTK 7.0 or greater")
+    endif()
+    # Enabling Python 3 in VTK requires VTK 7.0 or greater
+    set(VTK_WRAP_PYTHON OFF)
+  endif()
 endif()
 
 #
@@ -188,10 +198,22 @@ set(vtk_cmake_args ${vtk_cmake_args}
   -DVTK_DEBUG_LEAKS:BOOL=OFF
   -DVTK_REQUIRED_OBJCXX_FLAGS:STRING=""
   -DVTK_GROUP_WEB:BOOL=OFF
+  -DVTK_PYTHON_VERSION=${fletch_PYTHON_MAJOR_VERSION}
   -DPYTHON_EXECUTABLE:FILEPATH=${PYTHON_EXECUTABLE}
   -DPYTHON_LIBRARY:FILEPATH=${PYTHON_LIBRARY}
   -DPYTHON_INCLUDE_DIR:PATH=${PYTHON_INCLUDE_DIR}
   )
+
+
+set (VTK_PATCH_DIR ${fletch_SOURCE_DIR}/Patches/VTK/${VTK_SELECT_VERSION})
+if (EXISTS ${VTK_PATCH_DIR})
+  set(VTK_PATCH_COMMAND ${CMAKE_COMMAND}
+    -DVTK_PATCH_DIR=${VTK_PATCH_DIR}
+    -DVTK_SOURCE_DIR=${fletch_BUILD_PREFIX}/src/VTK
+    -P ${VTK_PATCH_DIR}/Patch.cmake)
+else()
+  set(VTK_PATCH_COMMAND "")
+endif()
 
 ExternalProject_Add(VTK
   DEPENDS ${VTK_DEPENDS}
@@ -200,14 +222,10 @@ ExternalProject_Add(VTK
   PREFIX ${fletch_BUILD_PREFIX}
   DOWNLOAD_DIR ${fletch_DOWNLOAD_DIR}
   INSTALL_DIR ${fletch_BUILD_INSTALL_PREFIX}
-  PATCH_COMMAND ${CMAKE_COMMAND}
-    -DVTK_PATCH_DIR=${fletch_SOURCE_DIR}/Patches/VTK
-    -DVTK_SOURCE_DIR=${fletch_BUILD_PREFIX}/src/VTK
-    -P ${fletch_SOURCE_DIR}/Patches/VTK/Patch.cmake
+  PATCH_COMMAND ${VTK_PATCH_COMMAND}
   CMAKE_GENERATOR ${gen}
   CMAKE_ARGS
     ${COMMON_CMAKE_ARGS}
-    -DBUILD_SHARED_LIBS:BOOL=${BUILD_SHARED_LIBS}
     ${vtk_cmake_args}
 )
 
