@@ -382,9 +382,13 @@ endif()
 list(APPEND fletch_external_sources VTK)
 
 # VXL
-set(VXL_version "cbca86fe5d12b7b0379d72a3aa6bf5cfeebd0302")
-set(VXL_url "https://github.com/vxl/vxl/archive/${VXL_version}.zip")
-set(VXL_md5 "044cc927012aef07b38492f9df1fd772")
+#set(VXL_version "cbca86fe5d12b7b0379d72a3aa6bf5cfeebd0302")
+set(VXL_version "fix_inf_time")
+#https://github.com/judajake/vxl/archive/fix_inf_time.zip
+#https://github.com/judajake/vxl/archive/fix_inf_time.zip
+set(VXL_url "https://github.com/judajake/vxl/archive/${VXL_version}.zip")
+#set(VXL_md5 "044cc927012aef07b38492f9df1fd772")
+set(VXL_md5 "3a7eb06fc96e104d50186cc21d21488e")
 set(VXL_dlname "vxl-${VXL_version}.zip")
 list(APPEND fletch_external_sources VXL)
 
