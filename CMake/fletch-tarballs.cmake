@@ -316,9 +316,9 @@ set(PROJ4_md5 "d598336ca834742735137c5674b214a1" )
 list(APPEND fletch_external_sources PROJ4 )
 
 # libgeotiff
-set(libgeotiff_version "1.4.1")
+set(libgeotiff_version "1.4.2")
 set(libgeotiff_url "http://download.osgeo.org/geotiff/libgeotiff/libgeotiff-${libgeotiff_version}.zip")
-set(libgeotiff_md5 "5ce69bd89fdc3be245bd118cf0bc71f1")
+set(libgeotiff_md5 "a7c7e11e301b7c17e44ea3107cd86e4e")
 list(APPEND fletch_external_sources libgeotiff)
 
 # GDAL
@@ -491,8 +491,8 @@ endif()
 
 # Darknet
 # The Darket package used is a fork maintained by kitware that uses CMake and supports building/running on windows
-set(Darknet_url "https://data.kitware.com/api/v1/file/59cbedae8d777f7d33e9d9df/download/darknet-1e3a9ceb.zip")
-set(Darknet_md5 "89fef1913972ec855c7b31a598c9c52f")
+set(Darknet_url "https://data.kitware.com/api/v1/file/59fb6e718d777f31ac6480fa/download/darknet-678f60dd.zip")
+set(Darknet_md5 "ee8e66b65914ee375a258b338b1a786a")
 list(APPEND fletch_external_sources Darknet)
 
 # PyBind11
